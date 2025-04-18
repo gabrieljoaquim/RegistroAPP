@@ -15,7 +15,11 @@ const profile = ref({
   experiences: [],
   education: [],
   skills: [],
-  languages: []
+  languages: [],
+  companyName: '',
+  phone: '',
+  address: '',
+  slogan: ''
 });
 
 const newExperience = ref({

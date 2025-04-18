@@ -18,7 +18,18 @@ export default createStore({
     async initAuth({ commit }) {
       return new Promise((resolve) => {
         authStateListener((user) => {
-          commit('setUser', user)
+          // Si tenemos un usuario, guardamos sus datos
+          if (user) {
+            const userData = {
+              uid: user.uid,
+              email: user.email,
+              displayName: user.displayName,
+              photoURL: user.photoURL
+            }
+            commit('setUser', userData)
+          } else {
+            commit('setUser', null)
+          }
           commit('setAuthIsReady', true)
           resolve(user)
         })
@@ -31,6 +42,10 @@ export default createStore({
     },
     currentUser(state) {
       return state.user
+    },
+    // Nuevo getter para obtener el email del usuario
+    userEmail(state) {
+      return state.user?.email || ''
     }
   }
 })

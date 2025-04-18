@@ -2,12 +2,16 @@
   <nav class="navbar">
     <div class="container">
 
-      <router-link to="/" class="logo">MiApp</router-link>
+      <router-link to="/" class="logo-container">
+        <img src="@/assets/logo.png" alt="Logo" class="logo-image">
+        <span v-if="isAuthenticated" class="user-name">{{ userName }}</span>
+      </router-link>
 
       <div class="nav-links">
         <template v-if="isAuthenticated">
-          <router-link to="/dashboard">Dashboard</router-link>
+          <router-link to="/dashboard">Publicar</router-link>
           <router-link to="/profile">Perfil</router-link>
+          <router-link to="/budgets">Presupuestos</router-link>
           <button @click="handleLogout" class="logout-btn">
             Cerrar sesión
           </button>
@@ -42,6 +46,11 @@ export default {
     const router = useRouter();
 
     const isAuthenticated = computed(() => store.getters.isAuthenticated);
+    const userName = computed(() => {
+      const user = store.state.user;
+      return user?.displayEmail || user?.email || '';
+    });
+    //const userName = computed(() => store.getters.user?.name || '');
 
     const handleLogout = async () => {
       try {
@@ -53,12 +62,30 @@ export default {
       }
     };
 
-    return { isAuthenticated, handleLogout };
+    return { isAuthenticated, handleLogout, userName };
   },
 };
 </script>
 
 <style scoped>
+.logo-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+}
+
+.logo-image {
+  height: 40px;
+  width: auto;
+}
+
+.user-name {
+  color: white;
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
 .navbar {
   background-color: #42b983;
   padding: 1rem 0;

@@ -49,6 +49,24 @@ const routes = [
     name: 'UserProfile',
     component: () => import('../components/UserProfileDetail.vue'),
     props: true
+  },
+  {
+    path: '/budget',
+    name: 'budget',
+    component: () => import('../views/BudgetView.vue')
+  },
+  {
+    path: '/budgets',
+    name: 'budgets',
+    component: () => import('../views/BudgetListView.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/budget/:id/edit',
+    name: 'editBudget',
+    component: () => import('../views/BudgetView.vue'),
+    props: true,
+    meta: { requiresAuth: true }
   }
 ]
 
