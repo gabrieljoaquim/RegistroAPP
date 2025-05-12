@@ -57,81 +57,44 @@
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
-import { registerWithEmailAndPassword } from "@/services/firebase";
-import { auth } from "@/services/firebase";
+import { authService } from "@/services/authService";
 
-export default {
-  setup() {
-    const name = ref("");
-    const email = ref("");
-    const password = ref("");
-    const error = ref(null);
-    const loading = ref(false);
-    const router = useRouter();
-    const store = useStore();
+const name = ref("");
+const email = ref("");
+const password = ref("");
+const error = ref(null);
+const loading = ref(false);
+const router = useRouter();
+const store = useStore();
 
-    // const handleRegister = async () => {
-    //   error.value = null;
-    //   loading.value = true;
+const handleRegister = async () => {
+  try {
+    error.value = null;
+    loading.value = true;
 
-    //   try {
-    //     const result = await registerWithEmailAndPassword(
-    //       email.value,
-    //       password.value,
-    //       name.value
-    //     );
+    const result = await store.dispatch('register', {
+      email: email.value,
+      password: password.value,
+      name: name.value
+    });
 
-    //     if (result.success) {
-    //       store.commit("setUser", result.user);
-    //       router.push("/dashboard");
-    //     } else {
-    //       error.value = result.error;
-    //     }
-    //   } catch (err) {
-    //     error.value = err.message;
-    //   } finally {
-    //     loading.value = false;
-    //   }
-    // };
-
-    const handleRegister = async () => {
-      error.value = null;
-      const result = await registerWithEmailAndPassword(
-        email.value,
-        password.value,
-        name.value
-      );
-
-      if (!result.success) {
-        if (result.errorCode === "auth/email-already-in-use") {
-          error.value =
-            "Este correo electrónico ya está registrado. ¿Quieres iniciar sesión?";
-        } else {
-          error.value = result.error || "Ocurrió un error al registrarse";
-        }
-      } else {
-        // Redirigir al dashboard o mostrar mensaje de éxito
-        console.log("Usuario registrado:", result.user);
-      }
-    };
-
-    const checkAuthConfig = () => {
-      console.log("Configuración actual de Auth:", {
-        appName: auth.app.name,
-        config: auth.app.options,
-        currentUser: auth.currentUser,
-      });
-    };
-
-    // Llama a esta función cuando se monte tu componente
-    checkAuthConfig();
-
-    return { name, email, password, error, loading, handleRegister };
-  },
+    if (result.success) {
+      router.push("/dashboard");
+    } else {
+      error.value = result.error === 'email-already-exists' 
+        ? "Este correo electrónico ya está registrado. ¿Quieres iniciar sesión?"
+        : result.error || "Ocurrió un error al registrarse";
+    }
+  } catch (err) {
+    error.value = "Error al conectar con el servidor";
+    console.error("Register error:", err);
+  } finally {
+    loading.value = false;
+  }
 };
 </script>
 

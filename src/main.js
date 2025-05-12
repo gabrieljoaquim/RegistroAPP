@@ -5,10 +5,13 @@ import store from './store'
 
 const app = createApp(App)
 
-app.use(store)
 app.use(router)
+app.use(store)
 
-// Inicializar autenticación antes de montar la app
-store.dispatch('initAuth').then(() => {
-  app.mount('#app')
+// Initialize the app immediately and handle auth state after mount
+app.mount('#app')
+
+// Check authentication state after mounting
+store.dispatch('initAuth').catch(error => {
+  console.error('Authentication initialization error:', error)
 })

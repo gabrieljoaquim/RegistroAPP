@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import { auth, db } from '../services/firebase';
-import { doc, updateDoc, addDoc, collection, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { useRouter, useRoute } from 'vue-router';
+import { useStore } from 'vuex';
+import { axiosInstance } from '@/services/authService';
 import { saveAs } from 'file-saver';
 import PDFDataForm from '../components/PDFDataForm.vue';
 
@@ -34,19 +34,17 @@ const loading = ref(false);
 
 const loadUserPosts = async () => {
   try {
-    const q = query(
-      collection(db, 'posts'),
-      where('userId', '==', auth.currentUser.uid)
-    );
-    const querySnapshot = await getDocs(q);
-    userPosts.value = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const response = await axiosInstance.get('/posts/user');
+    userPosts.value = response.data;
   } catch (error) {
     console.error('Error loading posts:', error);
   }
 };
+
+
+
+
+
 
 const addItemToBudget = () => {
   const total = budgetItem.value.quantity * budgetItem.value.unitPrice;
@@ -65,8 +63,6 @@ const addItemToBudget = () => {
   };
 };
 
-// Mover esta función dentro del script setup, después de addItemToBudget
-// Añadir aquí la función removeItem
 const removeItem = (index) => {
   const item = newBudget.value.items[index];
   newBudget.value.total -= item.total;

@@ -7,8 +7,22 @@ const multer = require('multer');
 const path = require('path');
 
 const app = express();
-app.use(cors());
+
+// Update CORS configuration
+app.use(cors({
+  origin: 'http://localhost:5173', // Vue.js development server
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 app.use(express.json());
+
+// Create uploads directory if it doesn't exist
+const fs = require('fs');
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads');
+}
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -33,11 +47,7 @@ const config = {
   connectionString: 'Driver={ODBC Driver 18 for SQL Server};Server=DANINO\\SQLEXPRESS;Database=budget_app;Trusted_Connection=yes;Encrypt=no;TrustServerCertificate=yes;'
 };
 
-// Remove the test connection block since we already have connectDB()
-// sql.connect(config)
-//   .then(pool => {...})
-//   .then(result => {...})
-//   .catch(err => {...});
+
 
 // Pool de conexión global
 let pool;
@@ -71,6 +81,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+// Update login endpoint to return user data
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -91,7 +102,34 @@ app.post('/api/login', async (req, res) => {
     }
     
     const token = jwt.sign({ userId: user.id }, 'your_jwt_secret');
-    res.json({ token });
+    
+    // Return user data along with token
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name || '',
+        profileImage: user.profile_image || null
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add getCurrentUser endpoint
+app.get('/api/auth/current-user', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.request()
+      .input('userId', sql.Int, req.user.userId)
+      .query('SELECT id, email, name, profile_image FROM users WHERE id = @userId');
+
+    if (!result.recordset[0]) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(result.recordset[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -254,4 +292,29 @@ app.use('/uploads', express.static('uploads'));
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Modificar el endpoint de registro para aceptar imágenes
+app.post('/api/register', upload.single('profileImage'), async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const profileImagePath = req.file ? `/uploads/${req.file.filename}` : null;
+    
+    const result = await pool.request()
+      .input('email', sql.VarChar, email)
+      .input('password', sql.VarChar, hashedPassword)
+      .input('profileImage', sql.VarChar, profileImagePath)
+      .query(`
+        INSERT INTO users (email, password, profile_image) 
+        VALUES (@email, @password, @profileImage);
+        SELECT SCOPE_IDENTITY() AS id;
+      `);
+    
+    const userId = result.recordset[0].id;
+    const token = jwt.sign({ userId }, 'your_jwt_secret');
+    res.json({ token, message: 'User registered successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });

@@ -1,7 +1,7 @@
 <template>
   <div class="forgot-password-container">
     <div class="card">
-      <h2 class="title">Recuperar contraseña</h2>
+      <h2 class="title">Recuperar Contraseña</h2>
 
       <form @submit.prevent="handleResetPassword" class="form">
         <div class="form-group">
@@ -11,69 +11,67 @@
             type="email"
             id="email"
             required
-            placeholder="Ingresa tu correo electrónico"
+            placeholder="ejemplo@correo.com"
           />
         </div>
 
         <button type="submit" class="btn-primary" :disabled="loading">
-          <span v-if="!loading">Enviar enlace</span>
+          <span v-if="!loading">Enviar enlace de recuperación</span>
           <span v-else>Enviando...</span>
         </button>
 
-        <div v-if="successMessage" class="success-message">
-          {{ successMessage }}
-        </div>
-
-        <div v-if="error" class="error-message">
-          {{ error }}
+        <div v-if="message" :class="['message', message.type]">
+          {{ message.text }}
         </div>
       </form>
 
       <div class="footer-links">
         <router-link to="/login" class="link">
-          Volver al inicio de sesión
+          Volver a Iniciar Sesión
         </router-link>
       </div>
     </div>
   </div>
 </template>
 
-<script>
+<script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import { sendPasswordReset } from "@/services/firebase";
+import { authService } from "@/services/authService";
 
-export default {
-  setup() {
-    const email = ref("");
-    const error = ref(null);
-    const successMessage = ref(null);
-    const loading = ref(false);
-    const router = useRouter();
+const email = ref("");
+const loading = ref(false);
+const message = ref(null);
+const router = useRouter();
 
-    const handleResetPassword = async () => {
-      error.value = null;
-      successMessage.value = null;
-      loading.value = true;
+const handleResetPassword = async () => {
+  try {
+    loading.value = true;
+    message.value = null;
 
-      try {
-        const result = await sendPasswordReset(email.value);
+    const result = await authService.resetPassword(email.value);
 
-        if (result.success) {
-          successMessage.value =
-            "Se ha enviado un correo con instrucciones para restablecer tu contraseña.";
-        } else {
-          error.value = result.error || "Ocurrió un error al enviar el correo.";
-        }
-      } catch (err) {
-        error.value = err.message || "Ocurrió un error inesperado.";
-      } finally {
-        loading.value = false;
-      }
+    if (result.success) {
+      message.value = {
+        type: 'success',
+        text: 'Se ha enviado un enlace de recuperación a tu correo electrónico'
+      };
+      setTimeout(() => router.push('/login'), 3000);
+    } else {
+      message.value = {
+        type: 'error',
+        text: result.error || 'Error al enviar el enlace de recuperación'
+      };
+    }
+  } catch (err) {
+    message.value = {
+      type: 'error',
+      text: 'Error al conectar con el servidor'
     };
-
-    return { email, error, successMessage, loading, handleResetPassword };
-  },
+    console.error("Reset password error:", err);
+  } finally {
+    loading.value = false;
+  }
 };
 </script>
 
@@ -137,16 +135,23 @@ export default {
   cursor: not-allowed;
 }
 
-.success-message {
-  color: #42b983;
+.message {
   margin-top: 1rem;
+  padding: 0.75rem;
+  border-radius: 4px;
   text-align: center;
 }
 
-.error-message {
-  color: #ff4444;
-  margin-top: 1rem;
-  text-align: center;
+.message.success {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.message.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
 }
 
 .footer-links {

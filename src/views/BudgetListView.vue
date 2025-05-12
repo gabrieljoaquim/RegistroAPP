@@ -50,27 +50,26 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { auth, db } from '../services/firebase';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { useStore } from 'vuex';
+import { axiosInstance } from '@/services/authService';
 import { generatePDF } from '../utils/pdfGenerator';
 import { saveAs } from 'file-saver';
 
+const store = useStore();
 const budgets = ref([]);
 const loading = ref(true);
-const userData = ref(null); // Añadimos esta referencia
+const userData = ref(null);
 
 const loadUserData = async () => {
   try {
-    const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-    if (userDoc.exists()) {
-      userData.value = {
-        companyName: userDoc.data().companyName || '',
-        phone: userDoc.data().phone || '',
-        email: userDoc.data().email || '',
-        address: userDoc.data().address || '',
-        slogan: userDoc.data().slogan || ''
-      };
-    }
+    const response = await axiosInstance.get('/users/profile');
+    userData.value = {
+      companyName: response.data.companyName || '',
+      phone: response.data.phone || '',
+      email: response.data.email || '',
+      address: response.data.address || '',
+      slogan: response.data.slogan || ''
+    };
   } catch (error) {
     console.error('Error loading user data:', error);
   }
@@ -83,11 +82,8 @@ const handleGeneratePDF = async (budget) => {
     }
 
     const pdfDoc = await generatePDF(budget, userData.value);
-    
-    // Esto abrirá el diálogo de guardado del sistema
     pdfDoc.download(`Presupuesto-${budget.clientName}.pdf`);
 
-    // Opcionalmente, mostrar el PDF en una nueva pestaña
     if (confirm('¿Deseas ver el PDF en el navegador?')) {
       pdfDoc.open();
     }
@@ -96,31 +92,16 @@ const handleGeneratePDF = async (budget) => {
   }
 };
 
-onMounted(() => {
-  loadBudgets();
-  loadUserData(); // Cargamos los datos del usuario al montar el componente
-});
-
 const loadBudgets = async () => {
   try {
-    const q = query(
-      collection(db, 'budgets'),
-      where('userId', '==', auth.currentUser.uid)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    budgets.value = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt: data.createdAt?.toDate(),
-        // Convert to numbers and ensure defaults
-        subtotal: Number(data.subtotal || 0),
-        iva: Number(data.iva || 0),
-        grandTotal: Number(data.grandTotal || 0)
-      };
-    })
+    const response = await axiosInstance.get('/budgets');
+    budgets.value = response.data.map(budget => ({
+      ...budget,
+      createdAt: new Date(budget.createdAt),
+      subtotal: Number(budget.subtotal || 0),
+      iva: Number(budget.iva || 0),
+      grandTotal: Number(budget.grandTotal || 0)
+    }))
     .sort((a, b) => b.createdAt - a.createdAt);
   } catch (error) {
     console.error('Error loading budgets:', error);
@@ -128,6 +109,11 @@ const loadBudgets = async () => {
     loading.value = false;
   }
 };
+
+onMounted(() => {
+  loadBudgets();
+  loadUserData();
+});
 </script>
 
 <style scoped>

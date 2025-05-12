@@ -1,7 +1,5 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { db } from '../services/firebase';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();

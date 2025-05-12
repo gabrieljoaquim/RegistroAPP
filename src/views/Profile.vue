@@ -4,9 +4,10 @@
 
     <div class="profile-card">
       <div class="profile-info">
-        <div class="avatar">
-          {{ userInitial }}
-        </div>
+        <ProfileImage
+          v-model="profileImage"
+          :userInitial="userInitial"
+        />
         <div class="details">
           <h2>{{ userName }}</h2>
           <p>{{ userEmail }}</p>
@@ -27,14 +28,20 @@
 </template>
 
 <script>
-import { computed } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useStore } from "vuex";
 import { useRouter } from "vue-router";
+import ProfileImage from '@/components/ProfileImage.vue';
 
 export default {
+  components: {
+    ProfileImage
+  },
+  
   setup() {
     const store = useStore();
     const router = useRouter();
+    const profileImage = ref(null);
 
     const user = computed(() => store.state.user);
 
@@ -58,12 +65,10 @@ export default {
     });
 
     const changePassword = () => {
-      // Implementar lógica para cambiar contraseña
       router.push("/forgot-password");
     };
 
     const deleteAccount = () => {
-      // Implementar lógica para eliminar cuenta
       if (
         confirm(
           "¿Estás seguro de que quieres eliminar tu cuenta? Esta acción no se puede deshacer."
@@ -73,6 +78,22 @@ export default {
       }
     };
 
+    onMounted(async () => {
+      try {
+        const response = await fetch('http://localhost:3000/api/profile/image', {
+          headers: {
+            'Authorization': `Bearer ${store.state.token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          profileImage.value = data.imageUrl;
+        }
+      } catch (error) {
+        console.error('Error loading profile image:', error);
+      }
+    });
+
     return {
       userInitial,
       userName,
@@ -80,6 +101,7 @@ export default {
       joinDate,
       changePassword,
       deleteAccount,
+      profileImage,
     };
   },
 };
@@ -105,19 +127,6 @@ export default {
   align-items: center;
   gap: 2rem;
   margin-bottom: 2rem;
-}
-
-.avatar {
-  width: 80px;
-  height: 80px;
-  background-color: #42b983;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 2rem;
-  font-weight: bold;
 }
 
 .details h2 {

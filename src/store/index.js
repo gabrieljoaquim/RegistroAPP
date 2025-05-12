@@ -1,51 +1,62 @@
-import { createStore } from 'vuex'
-import { authStateListener } from '@/services/firebase'
+import { createStore } from 'vuex';
+import { authService } from '@/services/authService';
 
 export default createStore({
   state: {
     user: null,
-    authIsReady: false
+    isAuthenticated: false
+  },
+  getters: {
+    isAuthenticated: state => state.isAuthenticated,
+    user: state => state.user
   },
   mutations: {
-    setUser(state, payload) {
-      state.user = payload
-    },
-    setAuthIsReady(state, payload) {
-      state.authIsReady = payload
+    setUser(state, user) {
+      state.user = user;
+      state.isAuthenticated = !!user;
     }
   },
   actions: {
     async initAuth({ commit }) {
-      return new Promise((resolve) => {
-        authStateListener((user) => {
-          // Si tenemos un usuario, guardamos sus datos
-          if (user) {
-            const userData = {
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL
-            }
-            commit('setUser', userData)
-          } else {
-            commit('setUser', null)
-          }
-          commit('setAuthIsReady', true)
-          resolve(user)
-        })
-      })
-    }
-  },
-  getters: {
-    isAuthenticated(state) {
-      return !!state.user
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          commit('setUser', null);
+          return;
+        }
+
+        const response = await authService.getCurrentUser();
+        if (response) {
+          commit('setUser', response);
+        } else {
+          localStorage.removeItem('token');
+          commit('setUser', null);
+        }
+      } catch (error) {
+        console.error('Init auth error:', error);
+        localStorage.removeItem('token');
+        commit('setUser', null);
+      }
     },
-    currentUser(state) {
-      return state.user
+
+    async register({ commit }, userData) {
+      try {
+        const response = await authService.register(userData);
+        commit('setUser', response.user);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
     },
-    // Nuevo getter para obtener el email del usuario
-    userEmail(state) {
-      return state.user?.email || ''
+
+    async login({ commit }, { email, password }) {
+      try {
+        const response = await authService.login(email, password);
+        commit('setUser', response.user);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
     }
   }
-})
+});

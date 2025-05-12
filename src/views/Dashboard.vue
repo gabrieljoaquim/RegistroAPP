@@ -1,9 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { auth, db } from '../services/firebase';
-// Update the imports to include 'where'
-import { doc, collection, addDoc, getDocs, deleteDoc, updateDoc, query, orderBy, where, getDoc } from 'firebase/firestore';
+import { useStore } from 'vuex';
+import { axiosInstance } from '@/services/authService';
 
+const store = useStore();
 const newPost = ref({
   title: '',
   description: '',
@@ -17,23 +17,12 @@ const editingPost = ref(null);
 const createPost = async () => {
   try {
     loading.value = true;
-    
-    // Obtener el nombre del usuario desde Firestore
-    const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
-    const userData = userDoc.data();
-    
-    const postData = {
-      userId: auth.currentUser.uid,
-      userName: userData.name, // Usar el nombre desde la colección users
+    const response = await axiosInstance.post('/posts', {
       title: newPost.value.title,
       description: newPost.value.description,
-      review: newPost.value.review,
-      createdAt: new Date(),
-      likes: 0
-    };
+      review: newPost.value.review
+    });
 
-    await addDoc(collection(db, 'posts'), postData);
-    
     // Reset form
     newPost.value = {
       title: '',
@@ -51,25 +40,12 @@ const createPost = async () => {
 
 const loadPosts = async () => {
   try {
-    if (!auth.currentUser) {
-      console.error('No user authenticated');
-      return;
-    }
-
-    const q = query(
-      collection(db, 'posts'),
-      where('userId', '==', auth.currentUser.uid)
-      // orderBy will be added back once the index is created
-    );
-    const querySnapshot = await getDocs(q);
-    posts.value = querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate()
-    }));
-
-    // Sort posts locally until index is ready
-    posts.value.sort((a, b) => b.createdAt - a.createdAt);
+    const response = await axiosInstance.get('/posts');
+    posts.value = response.data.map(post => ({
+      ...post,
+      createdAt: new Date(post.createdAt)
+    }))
+    .sort((a, b) => b.createdAt - a.createdAt);
   } catch (error) {
     console.error('Error loading posts:', error);
   }
@@ -78,20 +54,7 @@ const loadPosts = async () => {
 const deletePost = async (post) => {
   if (confirm('¿Estás seguro de que quieres eliminar esta publicación?')) {
     try {
-      // Delete the document first
-      await deleteDoc(doc(db, 'posts', post.id));
-
-      // Then delete the image if it exists
-      if (post.imagePath) {
-        try {
-          const imageRef = storageRef(storage, post.imagePath);
-          await deleteObject(imageRef);
-        } catch (deleteError) {
-          console.error('Error deleting image:', deleteError);
-          // Continue even if image deletion fails
-        }
-      }
-
+      await axiosInstance.delete(`/posts/${post.id}`);
       await loadPosts();
     } catch (error) {
       console.error('Error deleting post:', error);
@@ -105,8 +68,7 @@ const startEditing = (post) => {
 
 const updatePost = async () => {
   try {
-    const postRef = doc(db, 'posts', editingPost.value.id);
-    await updateDoc(postRef, {
+    await axiosInstance.put(`/posts/${editingPost.value.id}`, {
       title: editingPost.value.title,
       description: editingPost.value.description,
       review: editingPost.value.review

@@ -30,40 +30,36 @@
   </nav>
 </template>
 
-<script>
+<script setup>
 import { computed } from "vue";
 import { useStore } from "vuex";
 import { useRouter } from "vue-router";
-import { logout } from "@/services/firebase";
+import { authService, axiosInstance } from '@/services/authService';
 
-export default {
-  props: {
-    isDarkMode: Boolean
-  },
-  emits: ['toggle-theme'],
-  setup() {
-    const store = useStore();
-    const router = useRouter();
+const props = defineProps({
+  isDarkMode: Boolean
+});
 
-    const isAuthenticated = computed(() => store.getters.isAuthenticated);
-    const userName = computed(() => {
-      const user = store.state.user;
-      return user?.displayEmail || user?.email || '';
-    });
-    //const userName = computed(() => store.getters.user?.name || '');
+defineEmits(['toggle-theme']);
 
-    const handleLogout = async () => {
-      try {
-        await logout();
-        store.commit("setUser", null);
-        router.push("/login");
-      } catch (error) {
-        console.error("Error al cerrar sesión:", error);
-      }
-    };
+const store = useStore();
+const router = useRouter();
 
-    return { isAuthenticated, handleLogout, userName };
-  },
+const isAuthenticated = computed(() => store.getters.isAuthenticated);
+const userName = computed(() => {
+  const user = store.state.user;
+  return user?.name || user?.email || '';
+});
+
+const handleLogout = async () => {
+  try {
+    await authService.logout();
+    store.commit("setUser", null);
+    localStorage.removeItem('token');
+    router.push("/login");
+  } catch (error) {
+    console.error("Error al cerrar sesión:", error);
+  }
 };
 </script>
 
